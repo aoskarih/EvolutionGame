@@ -4,16 +4,24 @@ import numpy as np
 import random
 import pygame
 from scipy.special import expit
+import os
+import statistics
 
 pygame.init()
 
+# Saving brains of generation every x generation
+image_every = 50
+
+# Show every x generation in screen.
+# (Makes it really slow)
+visual_generation = 100
 
 # World properties
 
 # Size of map
-map_size = 50
+map_size = 100
 # Max time one generation can spend
-time_limit = 2000
+time_limit = 1000
 # regrowth speed
 reg_speed = 0.01
 
@@ -21,20 +29,23 @@ reg_speed = 0.01
 # Generation cycle properties
 
 # Number of creatures in generation
-creatures = 100
+creatures = 1000
 # How many creatures are saved from each generation for base of next
-ancestors = 20
+ancestors = 200
+# if using e_ancestor. Bigger number --> slower ancestor base growth
+base_growth_speed = 12
+
 # How many random new creatures per genration
-new_random_creatures = 40
+new_random_creatures = 0
 # How many child for each ancestor
 remainder = (creatures - new_random_creatures) % ancestors
 new_random_creatures += remainder
-childs = (creatures - new_random_creatures) / ancestors
+childs = int((creatures - new_random_creatures) / ancestors)
 
-max_generations = 100
+max_generations = 10000
 
 # How many pixels is one side of tile in map
-window_scale = 10
+window_scale = 5
 # pygame window
 screen = pygame.display.set_mode((map_size*window_scale,
                                   map_size*window_scale))
@@ -43,17 +54,17 @@ screen = pygame.display.set_mode((map_size*window_scale,
 # Energy properties
 
 # movement energy penalty
-movement_energy = 0.03
+movement_energy = 0.05
 # eating energy penalty
 eating_energy = 0.05
 # eating speed (%)
 eating_speed = 0.25
 # energy passed to child (%)
-child_energy = 0.25
+child_energy = 0.40
 # energy lost in reproducing
-reproduce_energy = 0.2
+reproduce_energy = 0.3
 # energy lost by default
-standing_energy = 0.03
+standing_energy = 0.05
 
 
 # Creature properties
@@ -61,16 +72,14 @@ standing_energy = 0.03
 # neurons in hidden layer
 hid_neurons = 40
 # lenght of visual
-sight = 2
+sight = 3
 # Mutation rate
-mr = 1
+mr = 0.5
 # Weight magnitude
 wm = 10
 # actions: move: 0 up, 1 down, 2 left, 3 right,
 # 4 eat, 5 reproduce
 output_neurons = 6
-
-
 
 
 class World:
@@ -180,13 +189,13 @@ class Organism:
             self.energy -= eating_energy
         elif int(action) == 5:
             # reproduce
+            self.energy -= reproduce_energy
             self.energy -= self.energy*child_energy
             action_result = Organism(self.place, self.brain_neurons, self.sight,
                                      energy=self.energy*child_energy-reproduce_energy,
                                      w1=self.brain.w1, w2=self.brain.w2,
                                      b1=self.brain.b1, b2=self.brain.b2)
             action_result.born = t
-            self.energy -= reproduce_energy
         else:
             self.energy -= movement_energy
 
@@ -215,6 +224,7 @@ class Game:
 
     def __init__(self, world_size, num_of_organisms, ancestor_orgs=None):
         # making world and organisms
+        self.world_size = world_size
         self.world = World(world_size)
         self.organisms = []
         if ancestor_orgs is not None:
@@ -223,14 +233,14 @@ class Game:
             for i in range(num_of_organisms):
                 self.organisms.append(Organism(np.random.randint(0, world_size-1, 2), hid_neurons, sight))
 
-    def simulate(self, max_time):
+    def simulate(self, max_time, generation):
 
         # elapsed iterations
         t = 0
         # making lists for best creatures in this generation
-        best = []
-        lifespans = [0]
-
+        best = [[0, None]]
+        lifespans = []
+        
         # simulation loop
         while t < max_time:
             # update food
@@ -243,12 +253,13 @@ class Game:
                 if result == "dead":
                     o.died = t
                     o.lifespan = o.died-o.born
-                    if o.lifespan > min(lifespans):
-                        best.insert(0, o)
-                        lifespans.insert(0, o.lifespan)
+                    lifespans.append(o.lifespan)
+                    a = min(l for (l, o) in best)
+                    if o.lifespan > a:
+                        best.insert(0, [o.lifespan, o])
                         if len(best) > ancestors:
-                            del lifespans[-1]
-                            del best[-1]
+                            x = [x for x in best if a in x][0]
+                            del best[best.index(x)]
                         self.organisms.remove(o)
                 elif result[1] == 4:
                     self.world.values[o.place[0], o.place[1]] += result[0]
@@ -258,27 +269,61 @@ class Game:
             # limiting food values between 0 and 1 after eating
             self.world.values = np.clip(self.world.values, 0, 1)
             # birthing new organisms
-            self.organisms += new_born
+            if new_born != []:
+                self.organisms += new_born
 
             t += 1
-            print("time spend: "+str(t))
 
+            if t == max_time:
+                for o in self.organisms:
+                    lifespans.append(o.lifespan)
+                    if o.lifespan > min(l for (l, o) in best):
+                        best.insert(0, [o.lifespan, o])
+                        if len(best) > ancestors:
+                            y = [y for y in best if a in y][0]
+                            del best[best.index(y)]
+            
             # making visual map and updating it to screen
-            self.visual_map()
-            pygame.display.update()
+            if generation % visual_generation == 0 or generation == 1:
+                self.visual_map()
+                pygame.display.update()
 
             # checking if anyone is alive
             if self.organisms == []:
                 print("Everyone died.  :(")
                 break
-        print(lifespans)
+
+        self.data_print(lifespans)
+
         return best
+
+
+    def data_print(self, lifespans):
+
+        average = sum(lifespans)/len(lifespans)
+        median = statistics.median(lifespans)
+        minimum = min(lifespans)
+        maximum = max(lifespans)
+        total_orgs = len(lifespans)
+        total_time = sum(lifespans)
+        print("Average: " + str(average))
+        print("Median:  " + str(median))
+        print("Minimum: " + str(minimum))
+        print("Maximum: " + str(maximum))
+        print("Number lived: " + str(total_orgs))
+        print("Total time lived: " + str(total_time))
 
     def new_generation(self, ancestor_orgs):
 
         for o in ancestor_orgs:
-            self.organisms.append(Organism(np.random.randint(0, world_size-1, 2), hid_neurons, sight,
-                                           w1=o.brain.w1, w2=o.brain.w2, b1=o.brain.b1, b2=o.brain.b2))
+            for val in range(childs):
+                self.organisms.append(Organism(np.random.randint(0, self.world_size-1, 2),
+                                               hid_neurons, sight,
+                                               w1=o.brain.w1, w2=o.brain.w2,
+                                               b1=o.brain.b1, b2=o.brain.b2))
+        for val in range(new_random_creatures):
+            self.organisms.append(Organism(np.random.randint(0, self.world_size-1, 2),
+                                           hid_neurons, sight))
 
     def visual_map(self):
 
@@ -296,20 +341,32 @@ class Game:
                              (o.place[0]*window_scale, o.place[1]*window_scale,
                               window_scale, window_scale), 2)
 
+
 def generation_cycle():
 
-    g = 0
-
+    g = 1
     ancestor_orgs = None
-    
+
     while g < max_generations:
-
+        print("generation: " + str(g))
         game = Game(map_size, creatures, ancestor_orgs=ancestor_orgs)
-        ancestor_orgs = game.simulate(time_limit)
-
+        result = game.simulate(time_limit, g)
+        ancestor_orgs, lifespans = [o for (l, o) in result], [l for (l, o) in result]
+        if g % image_every == 0:
+            o_i = 0
+            directory = "generation_"+str(g)
+            if not os.path.exists(directory):
+                os.makedirs(directory)
+                print("Directory made")
+            os.chdir(directory)
+            for o in ancestor_orgs:
+                np.savetxt(str(o_i)+"_w1", o.brain.w1)
+                np.savetxt(str(o_i)+"_w2", o.brain.w2)
+                np.savetxt(str(o_i)+"_b1", o.brain.b1)
+                np.savetxt(str(o_i)+"_b2", o.brain.b2)
+                o_i += 1
+            os.chdir("..")
         g += 1
-
-
 
 
 if __name__ == "__main__":

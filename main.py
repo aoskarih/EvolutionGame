@@ -11,7 +11,7 @@ pygame.init()
 # World properties
 
 # Size of map
-map_size = 150
+map_size = 50
 # Max time one generation can spend
 time_limit = 2000
 # regrowth speed
@@ -21,7 +21,7 @@ reg_speed = 0.01
 # Generation cycle properties
 
 # Number of creatures in generation
-creatures = 500
+creatures = 100
 # How many creatures are saved from each generation for base of next
 ancestors = 20
 # How many random new creatures per genration
@@ -31,9 +31,10 @@ remainder = (creatures - new_random_creatures) % ancestors
 new_random_creatures += remainder
 childs = (creatures - new_random_creatures) / ancestors
 
+max_generations = 100
 
 # How many pixels is one side of tile in map
-window_scale = 6
+window_scale = 10
 # pygame window
 screen = pygame.display.set_mode((map_size*window_scale,
                                   map_size*window_scale))
@@ -58,7 +59,7 @@ standing_energy = 0.03
 # Creature properties
 
 # neurons in hidden layer
-hid_neurons = 20
+hid_neurons = 40
 # lenght of visual
 sight = 2
 # Mutation rate
@@ -212,12 +213,15 @@ class Organism:
 
 class Game:
 
-    def __init__(self, world_size, num_of_organisms):
+    def __init__(self, world_size, num_of_organisms, ancestor_orgs=None):
         # making world and organisms
         self.world = World(world_size)
         self.organisms = []
-        for i in range(num_of_organisms):
-            self.organisms.append(Organism(np.random.randint(0, world_size-1, 2), hid_neurons, sight))
+        if ancestor_orgs is not None:
+            self.new_generation(ancestor_orgs)
+        else:
+            for i in range(num_of_organisms):
+                self.organisms.append(Organism(np.random.randint(0, world_size-1, 2), hid_neurons, sight))
 
     def simulate(self, max_time):
 
@@ -267,8 +271,14 @@ class Game:
             if self.organisms == []:
                 print("Everyone died.  :(")
                 break
-
         print(lifespans)
+        return best
+
+    def new_generation(self, ancestor_orgs):
+
+        for o in ancestor_orgs:
+            self.organisms.append(Organism(np.random.randint(0, world_size-1, 2), hid_neurons, sight,
+                                           w1=o.brain.w1, w2=o.brain.w2, b1=o.brain.b1, b2=o.brain.b2))
 
     def visual_map(self):
 
@@ -286,7 +296,21 @@ class Game:
                              (o.place[0]*window_scale, o.place[1]*window_scale,
                               window_scale, window_scale), 2)
 
+def generation_cycle():
+
+    g = 0
+
+    ancestor_orgs = None
+    
+    while g < max_generations:
+
+        game = Game(map_size, creatures, ancestor_orgs=ancestor_orgs)
+        ancestor_orgs = game.simulate(time_limit)
+
+        g += 1
+
+
+
 
 if __name__ == "__main__":
-    game = Game(map_size, creatures)
-    game.simulate(time_limit)
+    generation_cycle()

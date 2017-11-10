@@ -14,14 +14,14 @@ image_every = 50
 
 # Show every x generation in screen.
 # (Makes it really slow)
-visual_generation = 100
+visual_generation = 20
 
 # World properties
 
 # Size of map
-map_size = 100
+map_size = 200
 # Max time one generation can spend
-time_limit = 1000
+time_limit = 2000
 # regrowth speed
 reg_speed = 0.01
 
@@ -31,12 +31,12 @@ reg_speed = 0.01
 # Number of creatures in generation
 creatures = 1000
 # How many creatures are saved from each generation for base of next
-ancestors = 200
+ancestors = 50
 # if using e_ancestor. Bigger number --> slower ancestor base growth
 base_growth_speed = 12
 
 # How many random new creatures per genration
-new_random_creatures = 0
+new_random_creatures = 40
 # How many child for each ancestor
 remainder = (creatures - new_random_creatures) % ancestors
 new_random_creatures += remainder
@@ -62,7 +62,7 @@ eating_speed = 0.25
 # energy passed to child (%)
 child_energy = 0.40
 # energy lost in reproducing
-reproduce_energy = 0.3
+reproduce_energy = 0.2
 # energy lost by default
 standing_energy = 0.05
 
@@ -70,11 +70,11 @@ standing_energy = 0.05
 # Creature properties
 
 # neurons in hidden layer
-hid_neurons = 40
+hid_neurons = 20
 # lenght of visual
-sight = 3
+sight = 1
 # Mutation rate
-mr = 0.5
+mr = 0.3
 # Weight magnitude
 wm = 10
 # actions: move: 0 up, 1 down, 2 left, 3 right,
@@ -284,7 +284,7 @@ class Game:
                             del best[best.index(y)]
             
             # making visual map and updating it to screen
-            if generation % visual_generation == 0 or generation == 1:
+            if generation % visual_generation == 0:# or generation == 1:
                 self.visual_map()
                 pygame.display.update()
 

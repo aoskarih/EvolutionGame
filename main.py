@@ -14,12 +14,12 @@ image_every = 50
 
 # Show every x generation in screen.
 # (Makes it really slow)
-visual_generation = 20
+visual_generation = 10
 
 # World properties
 
-# Size of map
-map_size = 200
+# Size of map 200
+map_size = 50
 # Max time one generation can spend
 time_limit = 2000
 # regrowth speed
@@ -28,8 +28,8 @@ reg_speed = 0.01
 
 # Generation cycle properties
 
-# Number of creatures in generation
-creatures = 1000
+# Number of creatures in generation 1000
+creatures = 400
 # How many creatures are saved from each generation for base of next
 ancestors = 50
 # if using e_ancestor. Bigger number --> slower ancestor base growth
@@ -45,7 +45,7 @@ childs = int((creatures - new_random_creatures) / ancestors)
 max_generations = 10000
 
 # How many pixels is one side of tile in map
-window_scale = 5
+window_scale = 20
 # pygame window
 screen = pygame.display.set_mode((map_size*window_scale,
                                   map_size*window_scale))
@@ -69,10 +69,10 @@ standing_energy = 0.05
 
 # Creature properties
 
-# neurons in hidden layer
-hid_neurons = 20
+# neurons in hidden layer 20
+hid_neurons = 50
 # lenght of visual
-sight = 1
+sight = 2
 # Mutation rate
 mr = 0.3
 # Weight magnitude
@@ -284,7 +284,7 @@ class Game:
                             del best[best.index(y)]
             
             # making visual map and updating it to screen
-            if generation % visual_generation == 0:# or generation == 1:
+            if generation % visual_generation == 0 or generation == 1:
                 self.visual_map()
                 pygame.display.update()
 
@@ -337,7 +337,7 @@ class Game:
 
         # Organisms
         for o in self.organisms:
-            pygame.draw.rect(screen, (0, 0, 255, 255),
+            pygame.draw.rect(screen, [30, 30, 200, 255],
                              (o.place[0]*window_scale, o.place[1]*window_scale,
                               window_scale, window_scale), 2)
 
@@ -355,17 +355,19 @@ def generation_cycle():
         if g % image_every == 0:
             o_i = 0
             directory = "generation_"+str(g)
-            if not os.path.exists(directory):
-                os.makedirs(directory)
-                print("Directory made")
-            os.chdir(directory)
-            for o in ancestor_orgs:
-                np.savetxt(str(o_i)+"_w1", o.brain.w1)
-                np.savetxt(str(o_i)+"_w2", o.brain.w2)
-                np.savetxt(str(o_i)+"_b1", o.brain.b1)
-                np.savetxt(str(o_i)+"_b2", o.brain.b2)
-                o_i += 1
-            os.chdir("..")
+            # Save brains
+            if False: #or not
+                if not os.path.exists(directory):
+                    os.makedirs(directory)
+                    print("Directory made")
+                os.chdir(directory)
+                for o in ancestor_orgs:
+                    np.savetxt(str(o_i)+"_w1", o.brain.w1)
+                    np.savetxt(str(o_i)+"_w2", o.brain.w2)
+                    np.savetxt(str(o_i)+"_b1", o.brain.b1)
+                    np.savetxt(str(o_i)+"_b2", o.brain.b2)
+                    o_i += 1
+                os.chdir("..")
         g += 1
 
 

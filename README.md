@@ -1,5 +1,4 @@
 # EvolutionGame
-Little creatures try to survive
 
 The program itself is main.py
 
